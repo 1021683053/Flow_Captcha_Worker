@@ -12,6 +12,12 @@ async function main() {
   const app = createApiApp(pool);
   const server = http.createServer(app);
 
+  // 解决由于 Node >= 18 默认 keepAliveTimeout 过短 (5s)，
+  // 导致 Next.js Proxy/反向代理试图复用 TCP 链接时遭遇强制切断 (ECONNRESET/Socket hang up) 的问题。
+  server.keepAliveTimeout = 120000; // 120 secs
+  server.headersTimeout = 125000;  // 必须大于 keepAliveTimeout
+  server.setTimeout(300000); // 长轮询接口等待上限 (5分钟)
+
   server.listen(PORT, '0.0.0.0', () => {
     console.log(`[CaptchaWorker v5] API Server Ready on port ${PORT}`);
   });
