@@ -1,10 +1,74 @@
 const crypto = require('crypto');
+const fs = require('fs');
+const os = require('os');
+const path = require('path');
+const puppeteerBase = require('puppeteer');
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
 puppeteer.use(StealthPlugin());
 
 const { RECAPTCHA_SITE_KEY, TARGET_URL, PROXY_USER, PROXY_PASS, POOL_CONFIG } = require('./config');
 const { spawnProxyCore, killProxyCore } = require('./proxy_engine/core_manager');
+
+function isUsableExecutable(filePath) {
+  if (!filePath) return false;
+  try {
+    const stat = fs.statSync(filePath);
+    return stat.isFile() && stat.size > 0;
+  } catch {
+    return false;
+  }
+}
+
+function getSystemChromeCandidates() {
+  const homeDir = os.homedir();
+  switch (process.platform) {
+    case 'darwin':
+      return [
+        '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+        path.join(homeDir, 'Applications', 'Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome'),
+      ];
+    case 'win32': {
+      const programFiles = process.env.PROGRAMFILES || 'C:\\Program Files';
+      const programFilesX86 = process.env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)';
+      const localAppData = process.env.LOCALAPPDATA || path.join(homeDir, 'AppData', 'Local');
+      return [
+        path.join(programFiles, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(programFilesX86, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+        path.join(localAppData, 'Google', 'Chrome', 'Application', 'chrome.exe'),
+      ];
+    }
+    default:
+      return [
+        '/usr/bin/google-chrome',
+        '/usr/bin/google-chrome-stable',
+        '/usr/bin/chromium-browser',
+        '/usr/bin/chromium',
+      ];
+  }
+}
+
+function resolveChromeExecutable() {
+  const envCandidates = [
+    process.env.PUPPETEER_EXECUTABLE_PATH,
+    process.env.CHROME_EXECUTABLE_PATH,
+  ];
+
+  for (const candidate of envCandidates) {
+    if (isUsableExecutable(candidate)) return candidate;
+  }
+
+  for (const candidate of getSystemChromeCandidates()) {
+    if (isUsableExecutable(candidate)) return candidate;
+  }
+
+  try {
+    const bundledPath = puppeteerBase.executablePath();
+    if (isUsableExecutable(bundledPath)) return bundledPath;
+  } catch {}
+
+  return null;
+}
 
 class BrowserWorker {
   constructor(nodeId, proxyHost, initialStats = null) {
@@ -95,6 +159,7 @@ class BrowserWorker {
     
     this.fingerprint = this._generateFingerprint();
     const fp = this.fingerprint;
+    const executablePath = resolveChromeExecutable();
 
     if (this.proxyHost && typeof this.proxyHost === 'object' && this.proxyHost.server) {
       if (!this.realProxyHost || typeof this.realProxyHost !== 'string') {
@@ -120,7 +185,14 @@ class BrowserWorker {
       args.push(`--proxy-server=http://${this.realProxyHost}`);
     }
 
+    if (!executablePath) {
+      throw new Error('No usable Chrome executable found. Set PUPPETEER_EXECUTABLE_PATH or install a Puppeteer-managed Chrome build.');
+    }
+
+    console.log(`\x1b[36m[Node-${this.nodeId}]\x1b[0m 🧭 Using Chrome executable: ${executablePath}`);
+
     this.browser = await puppeteer.launch({
+      executablePath,
       headless: 'new',
       defaultViewport: { width: fp.screen.w, height: fp.screen.h },
       args
