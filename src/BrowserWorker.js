@@ -295,10 +295,10 @@ class BrowserWorker {
     }, { platform: fp.platform, hardwareConcurrency: fp.hardwareConcurrency, deviceMemory: fp.deviceMemory, languages: fp.languages, gpu: fp.gpu, canvasNoiseSeed: fp.canvasNoiseSeed, audioNoise: fp.audioNoise, screen: fp.screen });
 
     await this.page.emulateTimezone(fp.timezone);
-    await this.page.goto(TARGET_URL, { waitUntil: 'load', timeout: 60000 });
+    await this.page.goto(TARGET_URL, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await this.page.waitForFunction(
       () => !!window.grecaptcha?.enterprise?.execute,
-      { timeout: 30000 }
+      { timeout: 15000 }
     );
 
     const info = await this.page.evaluate(() => {
@@ -328,7 +328,7 @@ class BrowserWorker {
     this.isRestarting = true;
     this.ready = false;
 
-    const delayMs = this.restartFailCount * 30000;
+    const delayMs = Math.min(this.restartFailCount * 10000, 30000);
     if (delayMs > 0 && !this.isShuttingDown) {
       console.log(`\x1b[36m[Node-${this.nodeId}]\x1b[0m \x1b[33m⏳ 重启退避惩罚: 等待 ${delayMs / 1000} 秒后重试...\x1b[0m`);
       await new Promise(r => setTimeout(r, delayMs));

@@ -377,6 +377,7 @@ function createApiApp(pool) {
 
     try {
       const entry = await pool.getToken(120000, action, project_id);
+
       if (req.socket.destroyed) {
         console.log(`\x1b[35m[F2A-Solve]\x1b[0m 🔌 Client gone, token wasted`);
         return;
