@@ -378,7 +378,8 @@ class BrowserWorker {
 
   async executeToken(action) {
     if (!this.ready || this.isShuttingDown) throw new Error("Worker not ready or shutting down");
-    this.isFetching = true;
+    // NOTE: isFetching is managed exclusively by _dispatchTask (GlobalTokenPool)
+    // to prevent race conditions with the 500ms wakeup timer.
 
     try {
       const elapsed = Date.now() - this.lastExecuteTime;
@@ -408,10 +409,10 @@ class BrowserWorker {
         this._recover().catch(() => { });
       }
       throw e;
-    } finally {
-      this.isFetching = false;
     }
+    // No finally block: isFetching is reset by _dispatchTask after executeToken settles.
   }
+
 }
 
 module.exports = BrowserWorker;
