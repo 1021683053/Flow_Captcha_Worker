@@ -513,9 +513,14 @@ export default function WorkersPage() {
                    </div>
                 </div>
                 {!isDead && (isPaused ? (
-                  <Button variant="ghost" size="icon" onClick={(e) => restartWorker(w.nodeId, e)} className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors shrink-0 -mr-1 -mt-1 rounded-full" title="手动重启">
-                    <RotateCcw className="w-4 h-4" />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0 -mr-1 -mt-1">
+                    <Button variant="ghost" size="icon" onClick={(e) => restartWorker(w.nodeId, e)} className="h-8 w-8 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors rounded-full" title="手动重启">
+                      <RotateCcw className="w-4 h-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" onClick={(e) => killWorker(w.nodeId, e)} className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors rounded-full" title="移除实例">
+                      <PowerOff className="w-4 h-4" />
+                    </Button>
+                  </div>
                 ) : (
                   <Button variant="ghost" size="icon" onClick={(e) => killWorker(w.nodeId, e)} className="h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors shrink-0 -mr-1 -mt-1 rounded-full" title="停止实例">
                     <PowerOff className="w-4 h-4" />
